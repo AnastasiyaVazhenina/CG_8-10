@@ -1,0 +1,106 @@
+<HEAD>
+<BODY>
+<canvas id='lab10' width='500' height='400'> </canvas>
+<script>
+    canvas = document.getElementById('lab10');
+    var ctx = canvas.getContext('2d');
+    var z_buf = [];
+    for (var x = 0; x < canvas.width; x++) {
+        z_buf[x] = [];
+        for (var y = 0; y < canvas.height; y++) {
+            z_buf[x][y] = 0;
+        }
+    }
+    var DepthPixel = 1000;
+    var W = canvas.width;
+    var H = canvas.height;
+    for (var x = 0; x < canvas.width; x++) {
+        for (var y = 0; y < canvas.height; y++) {
+            z_buf[x][y] = DepthPixel;
+        }
+    }
+    var figure1 = [{ x: 450, y: 200, z: 0 }, { x: 280, y: 95, z: 100 }, { x: 70, y: 320, z:  80}];
+    var figure2 = [{ x: 300, y: 130, z: 40 }, { x: 500, y: 150, z: 0 }, { x: 350, y: 350, z: 100 }];
+    var figure3 = [{ x: 180, y: 180, z: 70 }, { x: 155, y: 45, z: 0 }, { x: 360, y: 260, z: 100 }];
+    draw(figure1, "#eef120");
+    draw(figure2, "#accf50");
+    draw(figure3, "#fc156c");
+    function get_Z(x, y, plane) {
+        return (-plane[3] - plane[0] * x - plane[1] * y) / plane[2];
+    }
+    function get_plane(figure) {
+        var plane = [];
+        var x1 = figure[0].x;
+        var y1 = figure[0].y;
+        var z1 = figure[0].z;
+        var x2 = figure[1].x;
+        var y2 = figure[1].y;
+        var z2 = figure[1].z;
+        var x3 = figure[2].x;
+        var y3 = figure[2].y;
+        var z3 = figure[2].z;
+        plane[0] = y1 * (z2 - z3) + y2 * (z3 - z1) + y3 * (z1 - z2);
+        plane[1] = z1 * (x2 - x3) + z2 * (x3 - x1) + z3 * (x1 - x2);
+        plane[2] = x1 * (y2 - y3) + x2 * (y3 - y1) + x3 * (y1 - y2);
+        plane[3] = x1 * (y3 * z2 - y2 * z3) + y1 * (x2 * z3 - x3 * z2) + z1 * (x3 * y2 - x2 * y3);
+        return plane;
+    }
+    function draw(coordinates, color) {
+        var triangle = [coordinates[0], coordinates[1], coordinates[2]];
+        var plane = get_plane(triangle);
+        var y_max = coordinates[0].y;
+        var y_min = y_max;
+        for (var i = 0; i < coordinates.length; i++) {
+            if (coordinates[i].y > y_max)
+                y_max = coordinates[i].y;
+            else if (coordinates[i].y < y_min)
+                y_min = coordinates[i].y;
+        }
+        ctx.fillStyle = color;
+        for (var y = y_max; y >= y_min; y--)
+            polynom_lyne(y, coordinates, plane);
+    }
+    function polynom_lyne(Y, polynome, plane) {
+        var chp = [];
+        var num_of_chp = 0;
+        for (var i = 1; i < polynome.length; i++) {
+            if (Y <= polynome[i].y && Y > polynome[i - 1].y
+                || Y > polynome[i].y && Y <= polynome[i - 1].y) {
+                var xk = polynome[i].x;
+                var yi = polynome[i].y;
+                var xi = polynome[i - 1].x;
+                var yk = polynome[i - 1].y;
+                chp[num_of_chp] = Math.round(xi + ((yk - Y) * (xk - xi)) / (yk - yi));
+                num_of_chp++;
+            }
+        }
+        if (Y <= polynome[0].y && Y > polynome[polynome.length - 1].y
+            || Y > polynome[0].y && Y <= polynome[polynome.length - 1].y) {
+            var xk = polynome[0].x;
+            var yi = polynome[0].y;
+            var xi = polynome[polynome.length - 1].x;
+            var yk = polynome[polynome.length - 1].y;
+            chp[num_of_chp] = Math.round(xi + ((yk - Y) * (xk - xi)) / (yk - yi));
+            num_of_chp++;
+        }
+        for (var i = 0; i < num_of_chp - 1; i++)
+            for (var j = num_of_chp - 1; j >= 0; j--)
+                if (chp[j] > chp[j + 1]) {
+                    var m = chp[j + 1];
+                    chp[j + 1] = chp[j];
+                    chp[j] = m;
+                }
+
+        for (var i = 0; i < num_of_chp / 2; i++) {
+            for (var X = chp[2 * i] + 1; X < chp[2 * i + 1]; X++) {
+                var Z = get_Z(X, Y, plane);
+                if (Z < z_buf[X][Y]) {
+                    z_buf[X][Y] = Z;
+                    ctx.fillRect(X, Y, 1, 1);
+                }
+            }
+        }
+    }
+</script>
+</BODY>
+</HEAD>
